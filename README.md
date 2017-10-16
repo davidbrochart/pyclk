@@ -1,49 +1,102 @@
-This is a simple implementation of Hardware Description Language (HDL).
+This is a simple implementation of a Hardware Description Language (HDL).
+Unlike other HDLs, the clock signal is implicit: a call to `run()` represents
+a clock cycle.
 
 ```python
 import sys
 sys.path.append('../pyclk')
 from pyclk import Module, Sig, In, Out, Reg
 
-class passthrough(Module):
+class counter(Module):
     def __init__(self, inst_name):
         with self.setup(inst_name):
-            Sig('sig0')
-            In('in0')
-            Out('out0')
+            In('i_rst')
+            Out('o_cnt')
+            Reg('cnt')
     def logic(self):
-        self.out0.d = self.in0.d
+        # logic goes here:
+        if self.i_rst.d == 1:
+            self.cnt.d = 0
+        else:
+            self.cnt.d = self.cnt.q + 1
+        self.o_cnt.d = self.cnt.q
 
 class toplevel(Module):
     def __init__(self, inst_name):
         with self.setup(inst_name):
             # declare signals, registers, I/Os:
-            In('in0')
-            Out('out0')
-            Sig('sig0')
-            Reg('reg0')
-            Reg('reg1')
+            In('i_rst1')
+            In('i_rst2')
+            Out('o_cnt1')
+            Out('o_cnt2')
             # instanciate sub-modules and make connections:
-            _ = passthrough('i_passthrough1')
-            _.in0     ('in0')
-            _.out0    ('sig0')
-            _ = passthrough('i_passthrough2')
-            _.in0     ('reg1')
-            _.out0    ('out0')
-    def logic(self):
-        # logic goes here:
-        self.reg0.d = self.sig0.d + 3
-        self.reg1.d = self.reg0.q + 1
+            _ = counter('u_counter1')
+            _.i_rst     ('i_rst1')
+            _.o_cnt     ('o_cnt1')
+            _ = counter('u_counter2')
+            _.i_rst     ('i_rst2')
+            _.o_cnt     ('o_cnt2')
 
-i_toplevel = toplevel('i_toplevel')
+rst1 = Sig()
+rst2 = Sig()
+
+u_toplevel = toplevel('u_toplevel')
+u_toplevel.i_rst1(rst1)
+u_toplevel.i_rst2(rst2)
+u_toplevel.bind()
+
+rst1.d = 1
+rst2.d = 1
+
+t = 0
+
+def print_run():
+    global t
+    print(f'**************************************** time = {t}')
+    u_toplevel.run()
+    print(u_toplevel.o_cnt1)
+    print(u_toplevel.o_cnt2)
+    t += 1
 
 for _ in range(3):
-    i_toplevel.run(1)
-    print(i_toplevel.out0)
+    print_run()
+
+rst1.d = 0
+
+print_run()
+
+rst2.d = 0
+
+for _ in range(5):
+    print_run()
 ```
 
 ```
-Output i_toplevel.out0: d == 0
-Output i_toplevel.out0: d == 1
-Output i_toplevel.out0: d == 4
+**************************************** time == 0
+Output u_toplevel.o_cnt1: d == 0
+Output u_toplevel.o_cnt2: d == 0
+**************************************** time == 1
+Output u_toplevel.o_cnt1: d == 0
+Output u_toplevel.o_cnt2: d == 0
+**************************************** time == 2
+Output u_toplevel.o_cnt1: d == 0
+Output u_toplevel.o_cnt2: d == 0
+**************************************** time == 3
+Output u_toplevel.o_cnt1: d == 0
+Output u_toplevel.o_cnt2: d == 0
+**************************************** time == 4
+Output u_toplevel.o_cnt1: d == 1
+Output u_toplevel.o_cnt2: d == 0
+**************************************** time == 5
+Output u_toplevel.o_cnt1: d == 2
+Output u_toplevel.o_cnt2: d == 1
+**************************************** time == 6
+Output u_toplevel.o_cnt1: d == 3
+Output u_toplevel.o_cnt2: d == 2
+**************************************** time == 7
+Output u_toplevel.o_cnt1: d == 4
+Output u_toplevel.o_cnt2: d == 3
+**************************************** time == 8
+Output u_toplevel.o_cnt1: d == 5
+Output u_toplevel.o_cnt2: d == 4
 ```
