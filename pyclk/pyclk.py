@@ -97,7 +97,9 @@ class Module:
     def __exit__(self, *args):
         _global_modules.pop()
         self._bind()
-    def setup(self, inst_name='', name=''):
+    def setup(self, inst_name='', name=None):
+        if name is None:
+            name = self.__class__.__name__
         self.inst_name = inst_name
         self.name = name
         self._parent = None
