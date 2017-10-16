@@ -13,11 +13,13 @@ class Sig:
         self._val = Val()
         if len(_global_modules) > 0:
             _global_modules[-1]._signals.append(self)
+            _global_modules[-1].__dict__[self.name] = self
+            self._mod = _global_modules[-1]
     @property
-    def v(self):
+    def d(self):
         return self._val.v
-    @v.setter
-    def v(self, val):
+    @d.setter
+    def d(self, val):
         if issubclass(type(val), Sig):
             self._val.v = val._val.v
         else:
@@ -36,7 +38,7 @@ class Sig:
         if type(self) is Reg:
             ret += f'{self.name}: d == {self.d}, q == {self.q}'
         else:
-            ret += f'{self.name}: v == {self.v}'
+            ret += f'{self.name}: d == {self.d}'
         return ret
 
 class Reg(Sig):
@@ -74,12 +76,16 @@ class In(Sig):
             if self._driver._mod is not None:
                 path2 += self._driver._mod.get_path() + '.'
             raise AttributeError(f'Input {path1}{self.name} already connected to {path2}{self._driver.name}')
+        if type(sig) is str:
+            sig = self._mod._parent.__dict__[sig]
         self._driver = sig
 
 class Out(Sig):
     def __init__(self, name=''):
         super().__init__(name=name)
     def __call__(self, sig):
+        if type(sig) is str:
+            sig = self._mod._parent.__dict__[sig]
         if sig._driver is not None:
             raise AttributeError(f'Out {sig.name} already connected to {sig._driver.name}')
         sig._driver = self
@@ -101,6 +107,7 @@ class Module:
         if len(_global_modules) > 0:
             _global_modules[-1]._modules.append(self)
             self._parent = _global_modules[-1]
+            _global_modules[-1].__dict__[self.inst_name] = self
         _global_modules.append(self)
         return self
     def get_path(self):
@@ -153,8 +160,6 @@ class Module:
         while len(pending_modules) > 0:
             for mod in pending_modules:
                 for sig in mod._signals:
-                    if mod == self:
-                        sig._mod = self
                     prev_sig = sig
                     while prev_sig._driver is not None:
                         prev_sig = prev_sig._driver
