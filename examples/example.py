@@ -8,7 +8,7 @@ class Passthrough(Module):
             self.sig0 = Sig('sig0')
             self.in0 = In('in0')
             self.out0 = Out('out0')
-    def compute(self):
+    def logic(self):
         self.out0.v = self.in0.v
 
 class Toplevel(Module):
@@ -27,8 +27,8 @@ class Toplevel(Module):
             self.i_passthrough2 = Passthrough('i_passthrough2')
             self.i_passthrough2.in0(self.reg1)
             self.i_passthrough2.out0(self.out0)
-    def compute(self):
-        # Logic goes here:
+    def logic(self):
+        # logic goes here:
         self.reg0.d = self.sig0.v + 3
         self.reg1.d = self.reg0.q + 1
 

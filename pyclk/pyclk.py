@@ -22,14 +22,22 @@ class Sig:
             self._val.v = val._val.v
         else:
             self._val.v = val
-    def _repr(self, _type):
-        ret = f'{_type} '
+    def __repr__(self):
+        if type(self) is Reg:
+            ret = f'Register '
+        elif type(self) is Sig:
+            ret = f'Signal '
+        elif type(self) is In:
+            ret = f'Input '
+        elif type(self) is Out:
+            ret = f'Output '
         if self._mod is not None:
             ret += self._mod.get_path() + '.'
-        ret += f'{self.name} == {self.v}'
+        if type(self) is Reg:
+            ret += f'{self.name}: d == {self.d}, q == {self.q}'
+        else:
+            ret += f'{self.name}: v == {self.v}'
         return ret
-    def __repr__(self):
-        return self._repr('Signal')
 
 class Reg(Sig):
     def __init__(self, name=''):
@@ -53,18 +61,20 @@ class Reg(Sig):
     @property
     def q(self):
         return self._q.v
-    def __repr__(self):
-        return self._repr('Register')
 
 class In(Sig):
     def __init__(self, name=''):
         super().__init__(name=name)
     def __call__(self, sig):
         if self._driver is not None:
-            raise AttributeError(f'In {self.name} already connected to {self._driver.name}')
+            path1 = ''
+            if self._mod is not None:
+                path1 += self._mod.get_path() + '.'
+            path2 = ''
+            if self._driver is not None:
+                path2 += self._driver.get_path() + '.'
+            raise AttributeError(f'Input {path1}{self.name} already connected to {path2}{self._driver.name}')
         self._driver = sig
-    def __repr__(self):
-        return self._repr('Input')
 
 class Out(Sig):
     def __init__(self, name=''):
@@ -74,8 +84,6 @@ class Out(Sig):
             raise AttributeError(f'Out {sig.name} already connected to {sig._driver.name}')
         sig._driver = self
         sig._val = self._val
-    def __repr__(self):
-        return self._repr('Output')
 
 class Module:
     def __enter__(self):
@@ -87,7 +95,7 @@ class Module:
         self.inst_name = inst_name
         self.name = name
         self._parent = None
-        self._first_compute = True
+        self._first_run = True
         self._signals = []
         self._modules = []
         if len(_global_modules) > 0:
@@ -103,11 +111,11 @@ class Module:
             parent = parent._parent
         path = '.'.join(path[::-1])
         return path
-    def compute(self):
+    def logic(self):
         pass
     def run(self, clkNb=1):
         for _ in range(clkNb):
-            # update:
+            # registers:
             new_modules = []
             pending_modules = [self]
             while len(pending_modules) > 0:
@@ -118,7 +126,7 @@ class Module:
                     new_modules += mod._modules
                 pending_modules = new_modules
                 new_modules = []
-            # compute:
+            # logic:
             done = False
             pending_modules = []
             while not done:
@@ -128,17 +136,17 @@ class Module:
                     for mod in pending_modules:
                         for sig in mod._signals:
                             if (type(sig) is In) or (type(sig) is Out):
-                                if self._first_compute:
+                                if self._first_run:
                                     done = False
                                 elif sig._val.v != sig._vkeep:
                                     done = False
                                 if not done:
                                     sig._vkeep = sig._val.v
-                        mod.compute()
+                        mod.logic()
                         new_modules += mod._modules
                     pending_modules = new_modules
                     new_modules = []
-                self._first_compute = False
+                self._first_run = False
     def _bind(self):
         pending_modules = [self]
         new_modules = []
@@ -151,7 +159,7 @@ class Module:
                     while prev_sig._driver is not None:
                         prev_sig = prev_sig._driver
                     if prev_sig != sig:
-                        if type(prev_sig) is Reg: # when connected to a Reg
+                        if type(prev_sig) is Reg:  # when connected to a Reg
                             sig._val = prev_sig._q # driver is q
                         else:
                             sig._val = prev_sig._val
