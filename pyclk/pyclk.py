@@ -106,12 +106,30 @@ class Module:
         pass
     def __exit__(self, *args):
         _global_modules.pop()
-    def __setattr__(self, name, value):
-        if '_signals' in self.__dict__ and name in self.__dict__:
-            if id(self.__dict__[name]) in [id(sig) for sig in self._signals]:
-                self.__dict__[name]._val.v = value
-                return
-        self.__dict__[name] = value
+    def __setattr__(self, name, val):
+        try:
+            if issubclass(type(val), Sig):
+                sig = val
+                if type(sig) is Reg:
+                    self.__dict__[name]._val.v = sig._q.v
+                else:
+                    self.__dict__[name]._val.v = sig._val.v
+            else:
+                self.__dict__[name]._val.v = val
+        except (KeyError, AttributeError):
+            self.__dict__[name] = val
+        #if '_signals' in self.__dict__ and name in self.__dict__:
+        #    if id(self.__dict__[name]) in [id(sig) for sig in self._signals]:
+        #        if issubclass(type(val), Sig):
+        #            sig = val
+        #            if type(sig) is Reg:
+        #                self.__dict__[name]._val.v = sig._q.v
+        #            else:
+        #                self.__dict__[name]._val.v = sig._val.v
+        #        else:
+        #            self.__dict__[name]._val.v = val
+        #        return
+        #self.__dict__[name] = val
     def setup(self, inst_name='', name=None):
         if name is None:
             name = self.__class__.__name__
@@ -172,7 +190,8 @@ class Module:
                         new_modules += mod._modules
                     pending_modules = new_modules
                     new_modules = []
-                self._first_run = False
+                if self._first_run:
+                    self._first_run = False
     def _bind(self):
         pending_modules = [self]
         new_modules = []
