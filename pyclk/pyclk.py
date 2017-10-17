@@ -24,6 +24,16 @@ class Sig:
             self._val.v = val._val.v
         else:
             self._val.v = val
+    def __eq__(self, other):
+        if type(self) is Reg:
+            return self._q.v == other
+        else:
+            return self._val.v == other
+    def __neq__(self, other):
+        if type(self) is Reg:
+            return self._q.v != other
+        else:
+            return self._val.v != other
     def __repr__(self):
         if type(self) is Reg:
             ret = f'Register '
@@ -96,22 +106,12 @@ class Module:
         pass
     def __exit__(self, *args):
         _global_modules.pop()
-    #def __setattr__(self, name, value):
-    #    if '_signals' in self.__dict__ and name in self.__dict__:
-    #        if self.__dict__[name] in self._signals:
-    #            self.__dict__[name]._val.v = value
-    #            return
-    #    self.__dict__[name] = value
-    #def __getattribute__(self, name):
-    #    _dict = object.__getattribute__(self, '__dict__')
-    #    sig = object.__getattribute__(self, f'__dict__[{name}]')
-    #    if '_signals' in _dict and name in _dict:
-    #        if sig in object.__getattribute__(self, '_signals'):
-    #            if type(sig) is Reg:
-    #                return sig.q
-    #            else:
-    #                return sig.d
-    #    return sig
+    def __setattr__(self, name, value):
+        if '_signals' in self.__dict__ and name in self.__dict__:
+            if id(self.__dict__[name]) in [id(sig) for sig in self._signals]:
+                self.__dict__[name]._val.v = value
+                return
+        self.__dict__[name] = value
     def setup(self, inst_name='', name=None):
         if name is None:
             name = self.__class__.__name__

@@ -10,11 +10,11 @@ class counter(Module):
             Reg ('r_cnt')
     def logic(self):
         # logic goes here:
-        if self.i_rst.d == 1:
-            self.r_cnt.d = 0
+        if self.i_rst == 1:
+            self.r_cnt = 0
         else:
-            self.r_cnt.d = self.r_cnt.q + 1
-        self.o_cnt.d = self.r_cnt.q
+            self.r_cnt = self.r_cnt.q + 1
+        self.o_cnt = self.r_cnt.q
 
 class toplevel(Module):
     def __init__(self, inst_name):
@@ -34,8 +34,8 @@ class toplevel(Module):
 
 u_toplevel = toplevel('u_toplevel')
 
-u_toplevel.i_rst1.d = 1
-u_toplevel.i_rst2.d = 1
+u_toplevel.i_rst1 = 1
+u_toplevel.i_rst2 = 1
 
 t = 0
 
@@ -50,11 +50,11 @@ def print_run():
 for _ in range(3):
     print_run()
 
-u_toplevel.i_rst1.d = 0
+u_toplevel.i_rst1 = 0
 
 print_run()
 
-u_toplevel.i_rst2.d = 0
+u_toplevel.i_rst2 = 0
 
 for _ in range(5):
     print_run()
