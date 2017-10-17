@@ -96,7 +96,22 @@ class Module:
         pass
     def __exit__(self, *args):
         _global_modules.pop()
-        self.bind()
+    #def __setattr__(self, name, value):
+    #    if '_signals' in self.__dict__ and name in self.__dict__:
+    #        if self.__dict__[name] in self._signals:
+    #            self.__dict__[name]._val.v = value
+    #            return
+    #    self.__dict__[name] = value
+    #def __getattribute__(self, name):
+    #    _dict = object.__getattribute__(self, '__dict__')
+    #    sig = object.__getattribute__(self, f'__dict__[{name}]')
+    #    if '_signals' in _dict and name in _dict:
+    #        if sig in object.__getattribute__(self, '_signals'):
+    #            if type(sig) is Reg:
+    #                return sig.q
+    #            else:
+    #                return sig.d
+    #    return sig
     def setup(self, inst_name='', name=None):
         if name is None:
             name = self.__class__.__name__
@@ -123,6 +138,8 @@ class Module:
     def logic(self):
         pass
     def run(self, clkNb=1):
+        if self._first_run:
+            self._bind()
         for _ in range(clkNb):
             # registers:
             new_modules = []
@@ -156,7 +173,7 @@ class Module:
                     pending_modules = new_modules
                     new_modules = []
                 self._first_run = False
-    def bind(self):
+    def _bind(self):
         pending_modules = [self]
         new_modules = []
         while len(pending_modules) > 0:
