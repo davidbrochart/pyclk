@@ -1,96 +1,58 @@
 This is a simple implementation of a Hardware Description Language (HDL).
-Unlike other HDLs, the clock signal is implicit: a call to `run()` represents
-a clock cycle.
+Unlike other HDLs, the clock signal is implicit and does not really exist:
+calling `run()` makes the clock advance one cycle.
 
 ```python
 import sys
 sys.path.append('../pyclk')
-from pyclk import Module, Sig, In, Out, Reg
+from pyclk import Module, Sig, In, Out, Reg, Trace
 
 class counter(Module):
-    def __init__(self, inst_name):
-        with self.setup(inst_name):
-            In  ('i_rst')
-            Out ('o_cnt')
-            Reg ('r_cnt')
-    def logic(self):
+    def __init__(s):
+        with s.setup():
+            s.i_rst = In()
+            s.o_cnt = Out()
+            s.r_cnt = Reg()
+    def logic(s):
         # logic goes here:
-        if self.i_rst == 1:
-            self.r_cnt = 0
+        if s.i_rst == 1:
+            s.r_cnt = 0
         else:
-            self.r_cnt = self.r_cnt.q + 1
-        self.o_cnt = self.r_cnt.q
+            s.r_cnt = s.r_cnt.q + 1
+        s.o_cnt = s.r_cnt.q
 
 class toplevel(Module):
-    def __init__(self, inst_name):
-        with self.setup(inst_name):
+    def __init__(s):
+        with s.setup():
             # declare signals, registers, I/Os:
-            In  ('i_rst1')
-            In  ('i_rst2')
-            Out ('o_cnt1')
-            Out ('o_cnt2')
+            s.i_rst1 = In()
+            s.i_rst2 = In()
+            s.o_cnt1 = Out()
+            s.o_cnt2 = Out()
             # instanciate sub-modules and make connections:
-            _ = counter ('u_counter1')
-            _.i_rst     ('i_rst1')
-            _.o_cnt     ('o_cnt1')
-            _ = counter ('u_counter2')
-            _.i_rst     ('i_rst2')
-            _.o_cnt     ('o_cnt2')
+            s.u_counter1 = _ = counter()
+            _.i_rst(s.i_rst1)
+            _.o_cnt(s.o_cnt1)
+            s.u_counter2 = _ = counter()
+            _.i_rst(s.i_rst2)
+            _.o_cnt(s.o_cnt2)
 
-u_toplevel = toplevel('u_toplevel')
+u_toplevel = toplevel()
+
+trace = Trace()
+trace.add(u_toplevel.o_cnt1)
+trace.add(u_toplevel.o_cnt2)
 
 u_toplevel.i_rst1 = 1
 u_toplevel.i_rst2 = 1
 
-t = 0
-
-def print_run():
-    global t
-    print(f'**************************************** time == {t}')
-    u_toplevel.run()
-    print(u_toplevel.o_cnt1)
-    print(u_toplevel.o_cnt2)
-    t += 1
-
-for _ in range(3):
-    print_run()
-
+u_toplevel.run(3, trace=trace)
 u_toplevel.i_rst1 = 0
-
-print_run()
-
+u_toplevel.run(trace=trace)
 u_toplevel.i_rst2 = 0
+u_toplevel.run(5, trace=trace)
 
-for _ in range(5):
-    print_run()
+trace.plot()
 ```
 
-```
-**************************************** time == 0
-Output u_toplevel.o_cnt1: d == 0
-Output u_toplevel.o_cnt2: d == 0
-**************************************** time == 1
-Output u_toplevel.o_cnt1: d == 0
-Output u_toplevel.o_cnt2: d == 0
-**************************************** time == 2
-Output u_toplevel.o_cnt1: d == 0
-Output u_toplevel.o_cnt2: d == 0
-**************************************** time == 3
-Output u_toplevel.o_cnt1: d == 0
-Output u_toplevel.o_cnt2: d == 0
-**************************************** time == 4
-Output u_toplevel.o_cnt1: d == 1
-Output u_toplevel.o_cnt2: d == 0
-**************************************** time == 5
-Output u_toplevel.o_cnt1: d == 2
-Output u_toplevel.o_cnt2: d == 1
-**************************************** time == 6
-Output u_toplevel.o_cnt1: d == 3
-Output u_toplevel.o_cnt2: d == 2
-**************************************** time == 7
-Output u_toplevel.o_cnt1: d == 4
-Output u_toplevel.o_cnt2: d == 3
-**************************************** time == 8
-Output u_toplevel.o_cnt1: d == 5
-Output u_toplevel.o_cnt2: d == 4
-```
+![alt text](examples/example.png)

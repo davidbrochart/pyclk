@@ -13,8 +13,13 @@ class Sig:
         self._val = Val()
         if len(_global_modules) > 0:
             _global_modules[-1]._signals.append(self)
-            _global_modules[-1].__dict__[self.name] = self
             self._mod = _global_modules[-1]
+    def get_path(self):
+        ret = ''
+        if self._mod is not None:
+            ret += self._mod.get_path() + '.'
+        ret += self.name
+        return ret
     @property
     def d(self):
         return self._val.v
@@ -36,13 +41,13 @@ class Sig:
             return self._val.v != other
     def __repr__(self):
         if type(self) is Reg:
-            ret = f'Register '
+            ret = 'register '
         elif type(self) is Sig:
-            ret = f'Signal '
+            ret = 'signal '
         elif type(self) is In:
-            ret = f'Input '
+            ret = 'input '
         elif type(self) is Out:
-            ret = f'Output '
+            ret = 'output '
         if self._mod is not None:
             ret += self._mod.get_path() + '.'
         if type(self) is Reg:
@@ -55,12 +60,6 @@ class Reg(Sig):
     def __init__(self, name=''):
         super().__init__(name=name)
         self._q = Val()
-    @property
-    def v(self):
-        raise AttributeError(f"""Attribute "v" doesn't exist for Reg {self.name}, use "d" or "q" instead""")
-    @v.setter
-    def v(self, val):
-        raise AttributeError(f"""Attribute "v" doesn't exist for Reg {self.name}, use "d" instead""")
     @property
     def d(self):
         return self._val.v
@@ -86,16 +85,12 @@ class In(Sig):
             if self._driver._mod is not None:
                 path2 += self._driver._mod.get_path() + '.'
             raise AttributeError(f'Input {path1}{self.name} already connected to {path2}{self._driver.name}')
-        if type(sig) is str:
-            sig = self._mod._parent.__dict__[sig]
         self._driver = sig
 
 class Out(Sig):
     def __init__(self, name=''):
         super().__init__(name=name)
     def __call__(self, sig):
-        if type(sig) is str:
-            sig = self._mod._parent.__dict__[sig]
         if sig._driver is not None:
             raise AttributeError(f'Out {sig.name} already connected to {sig._driver.name}')
         sig._driver = self
@@ -106,35 +101,28 @@ class Module:
         pass
     def __exit__(self, *args):
         _global_modules.pop()
+        for k, v in self.__dict__.items():
+            if id(v) in [id(sig) for sig in self._signals] or id(v) in [id(mod) for mod in self._modules]:
+                v.name = k
     def __setattr__(self, name, val):
-        try:
-            if issubclass(type(val), Sig):
-                sig = val
-                if type(sig) is Reg:
-                    self.__dict__[name]._val.v = sig._q.v
+        if name in self.__dict__:
+            if issubclass(type(self.__dict__[name]), Sig):
+                if issubclass(type(val), Sig):
+                    sig = val
+                    if type(sig) is Reg:
+                        self.__dict__[name]._val.v = sig._q.v
+                    else:
+                        self.__dict__[name]._val.v = sig._val.v
                 else:
-                    self.__dict__[name]._val.v = sig._val.v
+                    self.__dict__[name]._val.v = val
             else:
-                self.__dict__[name]._val.v = val
-        except (KeyError, AttributeError):
+                self.__dict__[name] = val
+        else:
             self.__dict__[name] = val
-        #if '_signals' in self.__dict__ and name in self.__dict__:
-        #    if id(self.__dict__[name]) in [id(sig) for sig in self._signals]:
-        #        if issubclass(type(val), Sig):
-        #            sig = val
-        #            if type(sig) is Reg:
-        #                self.__dict__[name]._val.v = sig._q.v
-        #            else:
-        #                self.__dict__[name]._val.v = sig._val.v
-        #        else:
-        #            self.__dict__[name]._val.v = val
-        #        return
-        #self.__dict__[name] = val
-    def setup(self, inst_name='', name=None):
-        if name is None:
-            name = self.__class__.__name__
-        self.inst_name = inst_name
-        self.name = name
+    def setup(self):
+        self.time = 0
+        self.module_name = self.__class__.__name__
+        self.name = 'u_' + self.module_name
         self._parent = None
         self._first_run = True
         self._signals = []
@@ -142,20 +130,19 @@ class Module:
         if len(_global_modules) > 0:
             _global_modules[-1]._modules.append(self)
             self._parent = _global_modules[-1]
-            _global_modules[-1].__dict__[self.inst_name] = self
         _global_modules.append(self)
         return self
     def get_path(self):
-        path = [self.inst_name]
+        path = [self.name]
         parent = self._parent
         while parent is not None:
-            path.append(parent.inst_name)
+            path.append(parent.name)
             parent = parent._parent
         path = '.'.join(path[::-1])
         return path
     def logic(self):
         pass
-    def run(self, clkNb=1):
+    def run(self, clkNb=1, trace=None):
         if self._first_run:
             self._bind()
         for _ in range(clkNb):
@@ -192,6 +179,17 @@ class Module:
                     new_modules = []
                 if self._first_run:
                     self._first_run = False
+            if trace is not None:
+                for sig in trace._signals:
+                    trace._trace[sig.get_path()]['time'].append(self.time)
+                    trace._trace[sig.get_path()]['time'].append(self.time + 1)
+                    if type(sig) is Reg:
+                        trace._trace[sig.get_path()]['val'].append(sig._q.v)
+                        trace._trace[sig.get_path()]['val'].append(sig._q.v)
+                    else:
+                        trace._trace[sig.get_path()]['val'].append(sig._val.v)
+                        trace._trace[sig.get_path()]['val'].append(sig._val.v)
+            self.time += 1
     def _bind(self):
         pending_modules = [self]
         new_modules = []
@@ -209,3 +207,22 @@ class Module:
                 new_modules += mod._modules
             pending_modules = new_modules
             new_modules = []
+
+class Trace:
+    def __init__(self):
+        self._signals = []
+        self._trace = {}
+    def add(self, sig):
+        self._signals.append(sig)
+        self._trace[sig.get_path()] = {'time': [], 'val': []}
+    def plot(self):
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(len(self._trace), sharex=True)
+        fig.set_size_inches((15, 5))
+        fig.subplots_adjust(hspace=0)
+        for i, name in enumerate(self._trace):
+            x = self._trace[name]['time']
+            y = self._trace[name]['val']
+            ax[i].plot(x, y)
+            ax[i].set_ylabel(name)
+        plt.show()
