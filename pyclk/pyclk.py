@@ -180,15 +180,13 @@ class Module:
                 if self._first_run:
                     self._first_run = False
             if trace is not None:
-                for sig in trace._signals:
-                    trace._trace[sig.get_path()]['time'].append(self.time)
-                    trace._trace[sig.get_path()]['time'].append(self.time + 1)
-                    if type(sig) is Reg:
-                        trace._trace[sig.get_path()]['val'].append(sig._q.v)
-                        trace._trace[sig.get_path()]['val'].append(sig._q.v)
-                    else:
-                        trace._trace[sig.get_path()]['val'].append(sig._val.v)
-                        trace._trace[sig.get_path()]['val'].append(sig._val.v)
+                for i, sig in enumerate(trace._signals):
+                    if trace._traces[i]['enable']:
+                        trace._traces[i]['time'].append(self.time)
+                        if type(sig) is Reg:
+                            trace._traces[i]['val'].append(sig._q.v)
+                        else:
+                            trace._traces[i]['val'].append(sig._val.v)
             self.time += 1
     def _bind(self):
         pending_modules = [self]
@@ -210,19 +208,48 @@ class Module:
 
 class Trace:
     def __init__(self):
+        self._traces = []
         self._signals = []
-        self._trace = {}
     def add(self, sig):
-        self._signals.append(sig)
-        self._trace[sig.get_path()] = {'time': [], 'val': []}
-    def plot(self):
+        if id(sig) in [id(s) for s in self._signals]:
+            i = self._signals.index(sig)
+            self._traces[i]['enable'] = True
+        else:
+            self._signals.append(sig)
+            self._traces.append({'time': [], 'val': [], 'enable': True})
+    def remove(self, sig):
+        i = self._signals.index(sig)
+        self._traces[i]['enable'] = False
+    def plot(self, figsize=None, full_path=False):
         import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(len(self._trace), sharex=True)
-        fig.set_size_inches((15, 5))
+        fig, ax = plt.subplots(len(self._traces), sharex=True)
+        if figsize is None:
+            figsize = (15, 2 * len(self._traces))
+        fig.set_size_inches(figsize)
         fig.subplots_adjust(hspace=0)
-        for i, name in enumerate(self._trace):
-            x = self._trace[name]['time']
-            y = self._trace[name]['val']
+        for i, sig in enumerate(self._signals):
+            path = sig.get_path()
+            x = list(self._traces[i]['time'])
+            y = list(self._traces[i]['val'])
+            j = 0
+            while j < len(x):
+                if j + 1 == len(x):
+                    x.insert(j + 1, x[j] + 1)
+                    y.insert(j + 1, y[j])
+                else:
+                    if x[j + 1] - x[j] > 1:
+                        x.insert(j + 1, x[j] + 1)
+                        y.insert(j + 1, y[j])
+                        j += 1
+                        x.insert(j + 1, None)
+                        y.insert(j + 1, None)
+                    else:
+                        x.insert(j + 1, x[j + 1])
+                        y.insert(j + 1, y[j])
+                j += 2
             ax[i].plot(x, y)
-            ax[i].set_ylabel(name)
+            if full_path:
+                ax[i].set_ylabel(path)
+            else:
+                ax[i].set_ylabel(path[path.rfind('.') + 1:])
         plt.show()

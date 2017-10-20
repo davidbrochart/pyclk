@@ -1,6 +1,11 @@
-This is a simple implementation of a Hardware Description Language (HDL).
-Unlike other HDLs, the clock signal is implicit and does not really exist:
-calling `run()` makes the clock advance one cycle.
+PyClk is a simple implementation of a Hardware Description Language (HDL).
+Unlike other HDLs, the clock signal is implicit and does not actually exist:
+calling `run()` makes the clock advance one cycle. This simplifies the
+implementation of PyClk and probably improves its performances, but it also
+makes the implementation of your design clearer: a register is declared
+explicitly, and not infered from the way it is used. This implies that your
+whole design works with a single clock. Although multiple clocks might be
+supported in the future, you can already do a lot with one clock!
 
 ```python
 import sys
@@ -40,7 +45,9 @@ class toplevel(Module):
 u_toplevel = toplevel()
 
 trace = Trace()
+trace.add(u_toplevel.i_rst1)
 trace.add(u_toplevel.o_cnt1)
+trace.add(u_toplevel.i_rst2)
 trace.add(u_toplevel.o_cnt2)
 
 u_toplevel.i_rst1 = 1
@@ -50,6 +57,14 @@ u_toplevel.run(3, trace=trace)
 u_toplevel.i_rst1 = 0
 u_toplevel.run(trace=trace)
 u_toplevel.i_rst2 = 0
+u_toplevel.run(5, trace=trace)
+
+trace.remove(u_toplevel.o_cnt1)
+
+u_toplevel.run(5, trace=trace)
+
+trace.add(u_toplevel.o_cnt1)
+
 u_toplevel.run(5, trace=trace)
 
 trace.plot()
