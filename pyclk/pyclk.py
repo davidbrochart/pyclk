@@ -1,3 +1,5 @@
+import types
+
 _global_modules = []
 
 class Val:
@@ -127,6 +129,8 @@ class Module:
         self._first_run = True
         self._signals = []
         self._modules = []
+        self._generators = []
+        self._can_run = -1 # 0: cannot run, -1: can run forever, >0: can run for nb of clk
         if len(_global_modules) > 0:
             _global_modules[-1]._modules.append(self)
             self._parent = _global_modules[-1]
@@ -142,41 +146,58 @@ class Module:
         return path
     def logic(self):
         pass
+    def task(self):
+        pass
+    def wait(self, clkNb=1):
+        self._can_run = clkNb
+        while self._can_run != 0:
+            yield
     def run(self, clkNb=1, trace=None):
         if self._first_run:
             self._bind()
+            for mod in self.walk_modules():
+                g = mod.task()
+                if type(g) is types.GeneratorType:
+                    mod._generators.append(g)
         for _ in range(clkNb):
-            # registers:
-            new_modules = []
-            pending_modules = [self]
-            while len(pending_modules) > 0:
-                for mod in pending_modules:
-                    for sig in mod._signals:
-                        if type(sig) is Reg:
-                            sig._q.v = sig._val.v
-                    new_modules += mod._modules
-                pending_modules = new_modules
-                new_modules = []
-            # logic:
+            # advance clock one cycle:
+            for mod in self.walk_modules():
+                for sig in mod._signals:
+                    if type(sig) is Reg:
+                        sig._q.v = sig._val.v
+            # execute tasks:
+            for mod in self.walk_modules():
+                if len(mod._generators) > 0:
+                    done = False
+                    while not done:
+                        try:
+                            g = next(mod._generators[-1])
+                            if type(g) is types.GeneratorType:
+                                mod._generators.append(g)
+                            else:
+                                done = True
+                        except StopIteration:
+                            mod._generators.pop()
+                            if len(mod._generators) > 0:
+                                g = mod._generators[-1]
+                            else:
+                                done = True
+                if mod._can_run >= 0:
+                    mod._can_run -= 1
+            # execute logic:
             done = False
-            pending_modules = []
             while not done:
                 done = True
-                pending_modules.append(self)
-                while len(pending_modules) > 0:
-                    for mod in pending_modules:
-                        for sig in mod._signals:
-                            if (type(sig) is In) or (type(sig) is Out):
-                                if self._first_run:
-                                    done = False
-                                elif sig._val.v != sig._vkeep:
-                                    done = False
-                                if not done:
-                                    sig._vkeep = sig._val.v
-                        mod.logic()
-                        new_modules += mod._modules
-                    pending_modules = new_modules
-                    new_modules = []
+                for mod in self.walk_modules():
+                    for sig in mod._signals:
+                        if (type(sig) is In) or (type(sig) is Out):
+                            if self._first_run:
+                                done = False
+                            elif sig._val.v != sig._vkeep:
+                                done = False
+                            if not done:
+                                sig._vkeep = sig._val.v
+                    mod.logic()
                 if self._first_run:
                     self._first_run = False
             if trace is not None:
@@ -187,24 +208,28 @@ class Module:
                             trace._traces[i]['val'].append(sig._q.v)
                         else:
                             trace._traces[i]['val'].append(sig._val.v)
-            self.time += 1
+            for mod in self.walk_modules():
+                mod.time += 1
     def _bind(self):
-        pending_modules = [self]
-        new_modules = []
-        while len(pending_modules) > 0:
-            for mod in pending_modules:
-                for sig in mod._signals:
-                    prev_sig = sig
-                    while prev_sig._driver is not None:
-                        prev_sig = prev_sig._driver
-                    if prev_sig != sig:
-                        if type(prev_sig) is Reg:  # when connected to a Reg
-                            sig._val = prev_sig._q # driver is q
-                        else:
-                            sig._val = prev_sig._val
-                new_modules += mod._modules
-            pending_modules = new_modules
+        for mod in self.walk_modules():
+            for sig in mod._signals:
+                prev_sig = sig
+                while prev_sig._driver is not None:
+                    prev_sig = prev_sig._driver
+                if prev_sig != sig:
+                    if type(prev_sig) is Reg:  # when connected to a Reg
+                        sig._val = prev_sig._q # driver is q
+                    else:
+                        sig._val = prev_sig._val
+    def walk_modules(self):
             new_modules = []
+            pending_modules = [self]
+            while len(pending_modules) > 0:
+                for mod in pending_modules:
+                    yield mod
+                    new_modules += mod._modules
+                pending_modules = new_modules
+                new_modules = []
 
 class Trace:
     def __init__(self):
