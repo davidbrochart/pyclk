@@ -98,17 +98,16 @@ class Module:
             while not done:
                 done = True
                 for mod in self.iter_modules():
-                    for sig in mod._signals:
-                        if (type(sig) is In) or (type(sig) is Out):
-                            if self._first_run:
-                                done = False
-                            elif sig._val.v != sig._vkeep:
-                                done = False
-                            if not done:
-                                sig._vkeep = sig._val.v
                     mod.logic()
+                    for sig in mod._signals:
+                        if type(sig) is In or type(sig) is Out:
+                            if sig._val.v != sig._vkeep:
+                                sig._vkeep = sig._val.v
+                                done = False
                 if self._first_run:
                     self._first_run = False
+                    done = False
+            # trace signals:
             if trace is not None:
                 for i, sig in enumerate(trace._signals):
                     if trace._traces[i]['enable']:
@@ -120,16 +119,22 @@ class Module:
             for mod in self.iter_modules():
                 mod.time += 1
     def _bind(self):
-        for mod in self.iter_modules():
-            for sig in mod._signals:
-                prev_sig = sig
-                while prev_sig._driver is not None:
-                    prev_sig = prev_sig._driver
-                if prev_sig != sig:
-                    if type(prev_sig) is Reg:  # when connected to a Reg
-                        sig._val = prev_sig._q # driver is q
-                    else:
-                        sig._val = prev_sig._val
+        done = False
+        while not done:
+            done = True
+            for mod in self.iter_modules():
+                for sig in mod._signals:
+                    prev_sig = sig
+                    while prev_sig._driver is not None:
+                        prev_sig = prev_sig._driver
+                    if id(prev_sig) != id(sig):
+                        val_keep = sig._val
+                        if type(prev_sig) is Reg:  # when connected to a Reg
+                            sig._val = prev_sig._q # driver is q
+                        else:
+                            sig._val = prev_sig._val
+                        if sig._val != val_keep:
+                            done = False
     def iter_modules(self):
             new_modules = []
             pending_modules = [self]

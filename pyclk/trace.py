@@ -15,6 +15,8 @@ class Trace:
     def plot(self, figsize=None, full_path=False):
         import matplotlib.pyplot as plt
         fig, ax = plt.subplots(len(self._traces), sharex=True)
+        if len(self._signals) == 1:
+            ax = [ax]
         if figsize is None:
             figsize = (15, 2 * len(self._traces))
         fig.set_size_inches(figsize)
