@@ -41,6 +41,7 @@ class Module:
         self._modules = []
         self._generators = []
         self._can_run = -1 # 0: cannot run, -1: can run forever, >0: can run for nb of clk
+        self._trace = None
     def __new__(cls, *args, **kwargs):
         self = super().__new__(cls, *args, **kwargs)
         self._init()
@@ -61,6 +62,8 @@ class Module:
         self._can_run = clkNb
         while self._can_run != 0:
             yield
+    def set_trace(self, trace):
+        self._trace = trace
     def run(self, clkNb=1, trace=None):
         if self._first_run:
             self._bind()
@@ -108,6 +111,8 @@ class Module:
                     self._first_run = False
                     done = False
             # trace signals:
+            if self._trace is not None:
+                trace = self._trace
             if trace is not None:
                 for i, sig in enumerate(trace._signals):
                     if trace._traces[i]['enable']:

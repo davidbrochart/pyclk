@@ -21,7 +21,7 @@ class counter(Module):
             self.r_cnt = self.r_cnt.q + 1
         self.o_cnt = self.r_cnt.q
 
-class toplevel(Module):
+class top(Module):
     def __init__(self):
         # declare signals, registers, I/Os
         # instanciate sub-modules and make connections
@@ -42,44 +42,32 @@ class toplevel(Module):
 
 
 ```python
-u_toplevel = toplevel()
+u_top = top()
 
 trace = Trace()
 for i in range(2):
-    trace.add(u_toplevel.i_rst[i])
-    trace.add(u_toplevel.o_cnt[i])
+    trace.add(u_top.i_rst[i])
+    trace.add(u_top.o_cnt[i])
+u_top.set_trace(trace)
 
-u_toplevel.i_rst[0] = 1
-u_toplevel.i_rst[1] = 1
+u_top.i_rst[0] = 1
+u_top.i_rst[1] = 1
 
-u_toplevel.run(3, trace=trace)
+u_top.run(3)
 
-u_toplevel.i_rst[0] = 0
+u_top.i_rst[0] = 0
 
-u_toplevel.run(trace=trace)
+u_top.run()
 
-u_toplevel.i_rst[1] = 0
+u_top.i_rst[1] = 0
 
-u_toplevel.run(5, trace=trace)
-
-trace.remove(u_toplevel.o_cnt[0])
-
-u_toplevel.run(5, trace=trace)
-
-trace.add(u_toplevel.o_cnt[0])
-
-u_toplevel.run(5, trace=trace)
+u_top.run(5)
 ```
 
     Time is 2
     Time is 4
     Time is 6
     Time is 8
-    Time is 10
-    Time is 12
-    Time is 14
-    Time is 16
-    Time is 18
 
 
 
