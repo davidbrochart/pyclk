@@ -1,3 +1,3 @@
 class Val:
-    def __init__(self, val=0):
+    def __init__(self, val=None):
         self.v = val

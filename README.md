@@ -4,6 +4,8 @@ PyClk is a simple implementation of a Hardware Description Language (HDL) in Pyt
 import sys
 sys.path.append('..')
 from pyclk import Module, List, In, Out, Reg, Trace
+
+%matplotlib inline
 ```
 
 
@@ -12,14 +14,15 @@ class counter(Module):
     def __init__(self):
         self.i_rst = In()
         self.o_cnt = Out()
-        self.r_cnt = Reg()
+        self.r_cnt = _ = Reg()
+        _.d = 0
     def logic(self):
         # logic goes here
-        if self.i_rst == 1:
-            self.r_cnt = 0
+        if self.i_rst.d == 1:
+            self.r_cnt.d = 0
         else:
-            self.r_cnt = self.r_cnt.q + 1
-        self.o_cnt = self.r_cnt.q
+            self.r_cnt.d = self.r_cnt.q + 1
+        self.o_cnt.d = self.r_cnt.q
 
 class top(Module):
     def __init__(self):
@@ -50,16 +53,16 @@ for i in range(2):
     trace.add(u_top.o_cnt[i])
 u_top.set_trace(trace)
 
-u_top.i_rst[0] = 1
-u_top.i_rst[1] = 1
+u_top.i_rst[0].d = 1
+u_top.i_rst[1].d = 1
 
 u_top.run(3)
 
-u_top.i_rst[0] = 0
+u_top.i_rst[0].d = 0
 
 u_top.run()
 
-u_top.i_rst[1] = 0
+u_top.i_rst[1].d = 0
 
 u_top.run(5)
 ```
@@ -68,8 +71,6 @@ u_top.run(5)
     Time is 4
     Time is 6
     Time is 8
-
-
 
 ```python
 trace.plot()

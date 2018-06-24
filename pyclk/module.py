@@ -3,27 +3,29 @@ from pyclk import Sig, Reg, In, Out, List
 
 class Module:
     def __setattr__(self, name, val):
-        if name in self.__dict__:
-            if issubclass(type(self.__dict__[name]), Sig):
-                if issubclass(type(val), Sig):
-                    sig = val
-                    if type(sig) is Reg:
-                        self.__dict__[name]._val.v = sig._q.v
-                    else:
-                        self.__dict__[name]._val.v = sig._val.v
-                else:
-                    self.__dict__[name]._val.v = val
-            else:
-                self.__dict__[name] = val
-        elif type(val) is List:
+        #if name in self.__dict__:
+        #    if issubclass(type(self.__dict__[name]), Sig):
+        #        if issubclass(type(val), Sig):
+        #            sig = val
+        #            if type(sig) is Reg:
+        #                self.__dict__[name]._val.v = sig._q.v
+        #            else:
+        #                self.__dict__[name]._val.v = sig._val.v
+        #        else:
+        #            self.__dict__[name]._val.v = val
+        #    else:
+        #        self.__dict__[name] = val
+        #elif type(val) is List:
+        if type(val) is List:
             self.__dict__[name] = val
             self.__dict__[name].name = name
             self.__dict__[name]._mod = self
         elif issubclass(type(val), Module):
-            self.__dict__[name] = val
-            self.__dict__[name].name = name
-            self.__dict__[name]._parent = self
-            self._modules.append(val)
+            if name != '_parent':
+                self.__dict__[name] = val
+                self.__dict__[name].name = name
+                self._modules.append(val)
+                self.__dict__[name]._parent = self
         elif issubclass(type(val), Sig):
             self.__dict__[name] = val
             self.__dict__[name].name = name
@@ -43,7 +45,7 @@ class Module:
         self._can_run = -1 # 0: cannot run, -1: can run forever, >0: can run for nb of clk
         self._trace = None
     def __new__(cls, *args, **kwargs):
-        self = super().__new__(cls, *args, **kwargs)
+        self = super().__new__(cls)
         self._init()
         return self
     def get_path(self):
