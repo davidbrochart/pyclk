@@ -14,11 +14,12 @@ class Trace:
         self._traces[i]['enable'] = False
     def plot(self, figsize=None, full_path=False):
         import matplotlib.pyplot as plt
+        plt.style.use('dark_background')
         fig, ax = plt.subplots(len(self._traces), sharex=True)
         if len(self._signals) == 1:
             ax = [ax]
         if figsize is None:
-            figsize = (15, 2 * len(self._traces))
+            figsize = (15, 1 * len(self._traces))
         fig.set_size_inches(figsize)
         fig.subplots_adjust(hspace=0)
         for i, sig in enumerate(self._signals):
@@ -41,9 +42,13 @@ class Trace:
                         x.insert(j + 1, x[j + 1])
                         y.insert(j + 1, y[j])
                 j += 2
-            ax[i].plot(x, y)
+            ax[i].plot(x, y, lw=0.5, antialiased=None, snap=True, color='lime')
+            ax[i].yaxis.label.set_color('orange')
+            c = ['slateblue', 'darkviolet'][i % 2]
+            p = (i % 2) * 10
+            ax[i].tick_params(axis='y', colors=c, pad=p)
             if full_path:
-                ax[i].set_ylabel(path)
+                ax[i].set_ylabel(path, rotation=0, color='y')
             else:
-                ax[i].set_ylabel(path[path.rfind('.') + 1:])
+                ax[i].set_ylabel(path[path.rfind('.') + 1:], rotation=0, color='y')
         plt.show()
