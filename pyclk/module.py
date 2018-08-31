@@ -3,20 +3,19 @@ from pyclk import Sig, Reg, In, Out, List
 
 class Module:
     def __setattr__(self, name, val):
-        #if name in self.__dict__:
-        #    if issubclass(type(self.__dict__[name]), Sig):
-        #        if issubclass(type(val), Sig):
-        #            sig = val
-        #            if type(sig) is Reg:
-        #                self.__dict__[name]._val.v = sig._q.v
-        #            else:
-        #                self.__dict__[name]._val.v = sig._val.v
-        #        else:
-        #            self.__dict__[name]._val.v = val
-        #    else:
-        #        self.__dict__[name] = val
-        #elif type(val) is List:
-        if type(val) is List:
+        if name in self.__dict__:
+            if issubclass(type(self.__dict__[name]), Sig):
+                if issubclass(type(val), Sig):
+                    sig = val
+                    if type(sig) is Reg:
+                        self.__dict__[name]._val.v = sig._q.v
+                    else:
+                        self.__dict__[name]._val.v = sig._val.v
+                else:
+                    self.__dict__[name]._val.v = val
+            else:
+                self.__dict__[name] = val
+        elif type(val) is List:
             self.__dict__[name] = val
             self.__dict__[name].name = name
             self.__dict__[name]._mod = self
@@ -58,6 +57,8 @@ class Module:
         return path
     def logic(self):
         pass
+    def cycle(self):
+        pass
     def task(self):
         pass
     def wait(self, clkNb=1):
@@ -76,6 +77,7 @@ class Module:
         for _ in range(clkNb):
             # advance clock one cycle:
             for mod in self.iter_modules():
+                mod.cycle()
                 for sig in mod._signals:
                     if type(sig) is Reg:
                         sig._q.v = sig._val.v
