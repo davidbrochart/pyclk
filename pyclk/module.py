@@ -101,6 +101,7 @@ class Module:
                 if mod._can_run >= 0:
                     mod._can_run -= 1
             # execute logic:
+            i = 0
             done = False
             while not done:
                 done = True
@@ -114,6 +115,8 @@ class Module:
                 if self._first_run:
                     self._first_run = False
                     done = False
+                i += 1
+                assert i < 10, f'Combinational loop detected in {self.get_path()}!'
             # trace signals:
             if self._trace is not None:
                 trace = self._trace
