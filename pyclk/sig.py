@@ -5,7 +5,7 @@ class Sig:
         self.name = name
         self._driver = None
         self._mod = None
-        self._vkeep = None
+        self._vkeep = 0
         self._val = Val()
     def get_path(self):
         ret = ''
