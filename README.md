@@ -1,10 +1,10 @@
-# PyClk
+# Make hardware design great again
 
 PyClk is a simple implementation of a Hardware Description Language (HDL) in
 Python. It has been developped primarily to design
 [Bundle](https://github.com/davidbrochart/bundle).
 
-In industry standard HDLs such as SystemC, Verilog and VHDL (and also
+In industry standard HDLs such as Verilog or VHDL (and also
 [MyHDL](http://www.myhdl.org)), the clock is modeled just as any other signal in
 the design. On the contrary, the clock signal in PyClk is special in that it is
 implicit and it does not actually exist: calling `run()` makes the clock advance
