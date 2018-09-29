@@ -121,13 +121,14 @@ class Module:
             if self._trace is not None:
                 trace = self._trace
             if trace is not None:
-                for i, sig in enumerate(trace._signals):
-                    if trace._traces[i]['enable']:
-                        trace._traces[i]['time'].append(self.time)
-                        if type(sig) is Reg:
-                            trace._traces[i]['val'].append(sig._q.v)
-                        else:
-                            trace._traces[i]['val'].append(sig._val.v)
+                if (self.time >= trace.from_time) and (trace.to_time == 0 or ((trace.to_time != 0) and (self.time <= trace.to_time))):
+                    for i, sig in enumerate(trace._signals):
+                        if trace._traces[i]['enable']:
+                            trace._traces[i]['time'].append(self.time)
+                            if type(sig) is Reg:
+                                trace._traces[i]['val'].append(sig._q.v)
+                            else:
+                                trace._traces[i]['val'].append(sig._val.v)
             for mod in self.iter_modules():
                 mod.time += 1
     def _bind(self):

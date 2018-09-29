@@ -1,7 +1,9 @@
 class Trace:
-    def __init__(self):
+    def __init__(self, from_time=0, to_time=0):
         self._traces = []
         self._signals = []
+        self.from_time = from_time
+        self.to_time = to_time
     def add(self, sig):
         if id(sig) in [id(s) for s in self._signals]:
             i = self._signals.index(sig)
